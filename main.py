@@ -48,3 +48,16 @@ def handle_download(message):
         bot.reply_to(message, "⚠️ Trimite un link valid.")
 
 bot.infinity_polling()
+try:
+            ydl_opts = {
+                'outtmpl': 'file_%(id)s.%(ext)s',
+                'quiet': True,
+                'no_warnings': True,
+                'writethumbnail': True,
+                # Aceasta este linia noua adaugata:
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            
+            with YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(message.text, download=True)
+                # ... restul codului ramane la fel
