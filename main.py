@@ -15,7 +15,6 @@ def handle_download(message):
     if "instagram.com" in message.text:
         status = bot.reply_to(message, "⏳ Se procesează...")
         try:
-            # Aici am integrat user_agent-ul in setari
             ydl_opts = {
                 'outtmpl': 'file_%(id)s.%(ext)s',
                 'quiet': True,
@@ -29,11 +28,15 @@ def handle_download(message):
                 info = ydl.extract_info(message.text, download=True)
                 filename = ydl.prepare_filename(info)
 
-            # Fix pentru poze daca yt-dlp schimba extensia
-            if not os.path.exists(filename) and os.path.exists(filename.split('.')[0] + '.jpg'):
-                filename = filename.split('.')[0] + '.jpg'
+            # Fix pentru extensie (poze)
+            if not os.path.exists(filename):
+                base = os.path.splitext(filename)[0]
+                for ext in ['.jpg', '.png', '.webp', '.jpeg']:
+                    if os.path.exists(base + ext):
+                        filename = base + ext
+                        break
 
-            # Trimitem fisierul
+            # Trimitere media
             if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
                 with open(filename, 'rb') as p:
                     bot.send_photo(message.chat.id, p)
@@ -41,14 +44,12 @@ def handle_download(message):
                 with open(filename, 'rb') as v:
                     bot.send_video(message.chat.id, v)
             
-            # Curatenie
             if os.path.exists(filename):
                 os.remove(filename)
             bot.delete_message(message.chat.id, status.message_id)
 
         except Exception as e:
-            bot.edit_message_text("❌ Instagram a blocat cererea. Incearcă mai târziu sau cu alt link public.", message.chat.id, status.message_id)
-            # In caz de eroare, incercam sa stergem fisierul daca a apucat sa se creeze
+            bot.edit_message_text("❌ Eroare: Instagram blochează accesul. Încearcă mai târziu.", message.chat.id, status.message_id)
             if 'filename' in locals() and os.path.exists(filename):
                 os.remove(filename)
     else:
