@@ -7,51 +7,45 @@ bot = telebot.TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
-    bot.send_message(message.chat.id, "✅ Botul este activ! Trimite un link public de Instagram.")
+    bot.send_message(message.chat.id, "🤖 Online. Trimite link public de Insta.")
 
 @bot.message_handler(func=lambda m: True)
 def handle_download(message):
     if "instagram.com" in message.text:
-        # Folosim send_message simplu pentru a evita eroarea "message not found"
-        status_msg = bot.send_message(message.chat.id, "⏳ Verific link-ul...")
+        # Nu mai folosim reply_to ca sa evitam eroarea 400
+        status = bot.send_message(message.chat.id, "⏳ Verific...")
+        
+        ydl_opts = {
+            'outtmpl': 'file_%(id)s.%(ext)s',
+            'quiet': True,
+            'writethumbnail': True,
+            'nocheckcertificate': True,
+            'geo_bypass': True, # Incearca sa ocoleasca blocajele regionale
+            'user_agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1'
+        }
         
         try:
-            ydl_opts = {
-                'outtmpl': 'file_%(id)s.%(ext)s',
-                'quiet': True,
-                'no_warnings': True,
-                'writethumbnail': True,
-                'nocheckcertificate': True,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-            }
-            
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(message.text, download=True)
                 filename = ydl.prepare_filename(info)
 
-            # Verificare extensie poze
+            # Fix extensie poze
             if not os.path.exists(filename):
-                for ext in ['.jpg', '.png', '.webp', '.jpeg']:
-                    alt_name = os.path.splitext(filename)[0] + ext
-                    if os.path.exists(alt_name):
-                        filename = alt_name
+                for ext in ['.jpg', '.png', '.jpeg']:
+                    if os.path.exists(os.path.splitext(filename)[0] + ext):
+                        filename = os.path.splitext(filename)[0] + ext
                         break
 
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
-                with open(filename, 'rb') as p:
-                    bot.send_photo(message.chat.id, p)
-            else:
-                with open(filename, 'rb') as v:
-                    bot.send_video(message.chat.id, v)
+            with open(filename, 'rb') as f:
+                if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    bot.send_photo(message.chat.id, f)
+                else:
+                    bot.send_video(message.chat.id, f)
             
-            if os.path.exists(filename):
-                os.remove(filename)
-            
+            os.remove(filename)
         except Exception as e:
-            bot.send_message(message.chat.id, "❌ Instagram a blocat accesul de pe acest server. Încearcă mai târziu.")
-            if 'filename' in locals() and os.path.exists(filename):
-                os.remove(filename)
+            bot.send_message(message.chat.id, "❌ Instagram a blocat conexiunea. Serverul este momentan restrictionat.")
     else:
-        bot.send_message(message.chat.id, "⚠️ Trimite un link de Instagram.")
+        bot.send_message(message.chat.id, "⚠️ Link invalid.")
 
 bot.infinity_polling()
